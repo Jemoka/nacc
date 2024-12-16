@@ -43,7 +43,7 @@ class Trainer:
         self.args = args
         self.accelerator = Accelerator(log_with="wandb")
         self.accelerator.init_trackers(
-            project_name="adventure", 
+            project_name="nacc", 
             config=vars(args),
             init_kwargs={"wandb": {"mode": None if args.wandb else "disabled",
                                    "name": args.experiment}},
@@ -56,18 +56,17 @@ class Trainer:
         self.save_dir = str(save_dir / "checkpoint")
         self.best_dir = str(save_dir / "best")
 
-        # <<<<<<< set up models <<<<<<<
-        # 
-        # self.model = ...
-        #
-        # >>>>>>> set up models >>>>>>>
+        # set up data
+        (self.train_dl, self.val_dl), num_features = get_dataloaders(
+            args.featureset, args.fold, args.batch_size
+        )
 
-        # <<<<<<< set up data <<<<<<<
-        #    
-        # self.train_dl = ...
-        # self.val_dl = ...
-        #    
-        # >>>>>>> set up data >>>>>>>
+        # set up models
+        self.model = NACCFuseModel(num_classes=3,
+                                   num_features=num_features,
+                                   nlayers=args.n_layers,
+                                   hidden=args.hidden_dim)
+        
         # leave blank
         # this will exist if we are resuming from checkpoint
         self.train_dl_skipped = None 
@@ -94,17 +93,80 @@ class Trainer:
 
             self.epoch()
 
-    def val(self):
-        with torch.inference_mode():
-            # <<<<<<< do some validation <<<<<<<
-            # 
-            # # remeber, score is higher = better
-            # score = self.gather(...).cpu().item()
-            # metrics = { "val/metric": ... }
-            # 
-            # >>>>>>> do some validation >>>>>>>
+        self.finish()
 
-            return score, metrics
+    def finish(self):
+        logits = np.empty((0,3))
+        labels = np.empty((0,3))
+
+        logger.info("DONE | CONFUSION; loading best weights {}", self.best_dir)
+        self.load(self.best_dir)
+
+        # validation is large, so we do batches
+        for indx, i in enumerate(iter(self.val_dl)):
+            if indx % self.args.report_interval == 0:
+                logger.info("CONFUSION | {}/{}", indx, len(self.val_dl))
+
+            with torch.inference_mode():
+                output = self.model(*i)
+
+            # append to talley
+            logits = np.append(logits, output["logits"].detach().cpu().numpy(), 0)
+            labels = np.append(labels, i[-1].detach().cpu().numpy(), 0)
+
+
+        # calculate confusion
+        prec_recc, roc, cm, acc = self.metrics(logits, labels)
+        self.accelerator.log({"best/precision_recall": prec_recc,
+                              "best/confusion": cm,
+                              "best/roc": roc,
+                              "best/accuracy": acc},
+                             step=self.global_step_counter_)
+
+        self.accelerator.end_training()
+
+    # calculate the f1 from tensors
+    @staticmethod
+    def metrics(logits, labels):
+        label_indicies = np.argmax(labels, 1)
+        logits_indicies = logits
+
+        class_names = ["Control", "MCI", "Dementia"]
+
+        pr_curve = wandb.plot.pr_curve(label_indicies, logits_indicies, labels = class_names)
+        roc = wandb.plot.roc_curve(label_indicies, logits_indicies, labels = class_names)
+        cm = wandb.plot.confusion_matrix(
+            y_true=np.array(label_indicies), # can't labels index by scalar tensor
+            probs=logits_indicies,
+            class_names=class_names
+        )
+
+        acc = sum(label_indicies == np.argmax(logits_indicies, axis=1))/len(label_indicies)
+
+        return pr_curve, roc, cm, acc
+
+    def val(self, max_val_steps=128):
+        accs = []
+        loses = []
+
+        for indx, i in enumerate(iter(self.val_dl)):
+            with torch.inference_mode():
+                output = self.model(*i)
+            _, _, _, acc = self.metrics(output["logits"].cpu().numpy(),
+                                        i[-1].cpu().numpy())
+            accs.append(acc)
+            loses.append(output["loss"].cpu().item())
+
+            if indx > max_val_steps:
+                break
+
+        score = sum(accs)/len(accs)
+        metrics = {
+            "val/accuracy": score,
+            "val/loss": sum(loses)/len(loses)
+        }
+
+        return score, metrics
 
     def epoch(self):
         logger.info("BEGIN EPOCH")
@@ -112,9 +174,6 @@ class Trainer:
         # because sometimes the load function may skip some epochs
         dl = self.train_dl if not self.train_dl_skipped else self.train_dl_skipped
         for indx, i in enumerate(dl):
-            # <<<<<<< do some setup <<<<<<<
-            # >>>>>>> do some setup >>>>>>>
-
             # take a step
             loss, train_metrics = self.step(i)
 
@@ -122,14 +181,15 @@ class Trainer:
             # (we do this because global_step_counter_
             #  is useful not as the # of steps but how
             #  many we need to skip for warm start)
-            self.accelerator.log(train_metrics, step=self.global_step_counter_)
+            if indx % self.args.report_interval == 0 and indx != 0:
+                self.accelerator.log(train_metrics, step=self.global_step_counter_)
+                logger.info("TRAIN | {}/{} | loss {}", self.global_step_counter_, self.total_batches*self.args.epochs, loss)
             self.global_step_counter_ += 1
 
             logger.debug("STEP | {}", train_metrics)
 
             # save a checkpoint, if needed
             if indx % self.args.checkpoint_interval == 0 and indx != 0:
-                logger.info("TRAIN | {} | loss {}", self.global_step_counter_, loss)
                 self.save(self.save_dir)
             # perform validation and save a checkpoint, if needed
             if indx % self.args.validation_interval == 0 and indx != 0:
@@ -146,22 +206,14 @@ class Trainer:
         self.train_dl_skipped = None
 
     def step(self, batch):
-        # <<<<<<< do some work <<<<<<<
-        # 
-        # loss = self.model(**batch, ...)
-        #
-        # >>>>>>> do some work >>>>>>>
-
+        loss = self.model(*batch)["loss"]
+        
         self.accelerator.backward(loss)
         self.optim.step()
         self.optim.zero_grad()
 
-        # <<<<<<< prepare metrics <<<<<<<
-        # 
-        # loss = self.gather(loss).cpu().item() 
-        # metrics = { "train/metric": ... }
-        #
-        # >>>>>>> prepare metrics >>>>>>>
+        loss = self.gather(loss).cpu().item() 
+        metrics = { "train/loss": loss }
 
         return loss, metrics
         
