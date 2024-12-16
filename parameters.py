@@ -10,8 +10,8 @@ parser.add_argument("--warm_start", default=None, type=str, help="recover traine
 
 # intervals
 parser.add_argument("--report_interval", default=32, type=int, help="save to wandb every this many steps")
-parser.add_argument("--checkpoint_interval", default=512, type=int, help="checkpoint every this many steps")
-parser.add_argument("--validation_interval", default=512, type=int, help="validate every this many steps")
+parser.add_argument("--checkpoint_interval", default=256, type=int, help="checkpoint every this many steps")
+parser.add_argument("--validation_interval", default=256, type=int, help="validate every this many steps")
 
 # dataset
 parser.add_argument("--out_dir", help="directory to save checkpoints and outputs", type=str, default="output")
