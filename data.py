@@ -97,7 +97,9 @@ def collate_fn(batch):
     return inv_data, inv_mask.bool(), var_data, var_mask.bool(), is_pad, out
 
 def get_dataloaders(featureset="combined", fold=0, batch_size=16):
-    dataset = datasets.load_dataset("./data/nacc", f"{featureset}_longitudinal_{str(fold)}")
+    dataset = datasets.load_dataset("./data/nacc",
+                                    f"{featureset}_longitudinal_{str(fold)}",
+                                    trust_remote_code=True)
 
     dataset_val = dataset["validation"]
     dataset_val.set_format("torch", ["normalized", "target"])
