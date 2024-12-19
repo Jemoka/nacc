@@ -21,11 +21,11 @@ parser.add_argument("--fold", help="kfold fold", type=int, default=0)
 # training hyperparameters
 parser.add_argument("--lr", help="learning rate", type=float, default=5e-5)
 parser.add_argument("--epochs", help="number of epochs to train", type=int, default=55)
-parser.add_argument("--batch_size", help="batch size", type=int, default=32)
+parser.add_argument("--batch_size", help="batch size", type=int, default=64)
 
 # model hyperparemeters
-parser.add_argument("--hidden_dim", help="hidden dimension", type=int, default=1024)
-parser.add_argument("--n_layers", help="number of layers for the model", type=int, default=2)
+parser.add_argument("--hidden_dim", help="hidden dimension", type=int, default=512)
+parser.add_argument("--n_layers", help="number of layers for the model", type=int, default=3)
 
 
 

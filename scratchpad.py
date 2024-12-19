@@ -19,12 +19,8 @@ logger.add(
 
 from trainer import Trainer
 from commands import configure
+from datasets import load_dataset
 
-experiment = configure("test",
-                       # validation_interval=32, report_interval=8, checkpoint_interval=32,
-                       epochs=1)
-
-trainer = Trainer.from_pretrained("./output/test/checkpoint")
-
-trainer.train()
+# ds = load_dataset("./data/nacc", "neuralpsych_longitudinal_0")
+# trainer = Trainer.from_pretrained("./output/e1_neuralpsych_512_5e-5/best")
 
