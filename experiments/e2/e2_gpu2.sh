@@ -4,6 +4,6 @@
 FEATURESET=combined # the featurest to learn
 
 for fold in 0 1 2 3 4; do
-    CUDA_VISIBLE_DEVICES=2 uv run python main.py "e2_kfold_${FEATURESET}_${fold}" --fold $fold --featureset $FEATURESET   --validation_interval 64 --checkpoint_interval 64 --report_interval 16 --wandb
+    CUDA_VISIBLE_DEVICES=6 uv run python main.py "e2_kfold_${FEATURESET}_${fold}" --fold $fold --featureset $FEATURESET   --validation_interval 64 --checkpoint_interval 64 --report_interval 16 --wandb
 done
 
