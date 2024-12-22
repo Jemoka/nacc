@@ -103,7 +103,8 @@ class NACCFeatureExtraction(nn.Module):
 # the transformer network
 class NACCFuseModel(nn.Module):
 
-    def __init__(self, num_classes, num_features, nhead=4, nlayers=3, hidden=128):
+    def __init__(self, num_classes, num_features, nhead=4, nlayers=3,
+                 hidden=128, no_transformer=False):
         # call early initializers
         super().__init__()
 
@@ -111,6 +112,13 @@ class NACCFuseModel(nn.Module):
         self.extraction = NACCFeatureExtraction(nhead, nlayers, hidden)
         self.temporal = NACCTemporalLSTM(nlayers, num_features)
         self.hidden = hidden
+
+        # if requested, skip the transformer and just project
+        self.no_transformer = no_transformer
+        if self.no_transformer:
+            # if we skip the transformer encoder, our feature extractor
+            # will also just be a projection
+            self.extraction = nn.Linear(num_features, hidden, bias=True)
 
         # create a mapping between feature and hidden space
         # so temporal can be fused with hidden
@@ -139,10 +147,15 @@ class NACCFuseModel(nn.Module):
                 feats_temporal, mask_temporal,
                 padding_mask, # True if its padding
                 labels=None):
-        # encnode the invariant featrues first
-        invariant_encoding = self.extraction(feats_invariant, mask_invariant)
+
         # and encode the temporal features
         temporal_encoding = self.temporal(feats_temporal, padding_mask)
+
+        if self.no_transformer:
+            invariant_encoding = self.extraction(feats_invariant)
+        else:
+            # encnode the invariant featrues first
+            invariant_encoding = self.extraction(feats_invariant, mask_invariant)
 
         # late fuse and predict
         # apply a learned offset shift to the temporal data

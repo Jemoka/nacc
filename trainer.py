@@ -58,14 +58,15 @@ class Trainer:
 
         # set up data
         (self.train_dl, self.val_dl), num_features = get_dataloaders(
-            args.featureset, args.fold, args.batch_size
+            args.featureset, args.fold, args.batch_size, args.no_longitudinal
         )
 
         # set up models
         self.model = NACCFuseModel(num_classes=3,
                                    num_features=num_features,
                                    nlayers=args.n_layers,
-                                   hidden=args.hidden_dim)
+                                   hidden=args.hidden_dim,
+                                   no_transformer=args.no_transformer)
         
         # leave blank
         # this will exist if we are resuming from checkpoint

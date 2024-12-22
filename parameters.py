@@ -17,6 +17,8 @@ parser.add_argument("--validation_interval", default=256, type=int, help="valida
 parser.add_argument("--out_dir", help="directory to save checkpoints and outputs", type=str, default="output")
 parser.add_argument("--featureset", help="which feature set to run", type=str, default="combined")
 parser.add_argument("--fold", help="kfold fold", type=int, default=0)
+parser.add_argument("--no_longitudinal", default=False, action="store_true", help="even if longitudinal data is available, use only one past sample")
+
 
 # training hyperparameters
 parser.add_argument("--lr", help="learning rate", type=float, default=5e-5)
@@ -26,6 +28,7 @@ parser.add_argument("--batch_size", help="batch size", type=int, default=64)
 # model hyperparemeters
 parser.add_argument("--hidden_dim", help="hidden dimension", type=int, default=512)
 parser.add_argument("--n_layers", help="number of layers for the model", type=int, default=3)
+parser.add_argument("--no_transformer", default=False, action="store_true", help="use a simple, linear encoding scheme instead of Transformer encoding")
 
 
 

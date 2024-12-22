@@ -75,8 +75,13 @@ def process_sample(sample):
             data_var, data_var,
             one_hot_target)
 
-def collate_fn(batch):
+def collate_fn(batch, no_longitudinal=False):
     di, dim, dv, dvm, target = zip(*[process_sample(i) for i in batch])
+
+    # crop the data such that all of them are not longitudinal
+    if no_longitudinal:
+        dv = [i[-1:] for i in dv]
+        dvm = [i[-1:] for i in dvm]
 
     # invariant data can just be stacked
     inv_data = torch.stack(di)
@@ -96,7 +101,7 @@ def collate_fn(batch):
 
     return inv_data, inv_mask.bool(), var_data, var_mask.bool(), is_pad, out
 
-def get_dataloaders(featureset="combined", fold=0, batch_size=16):
+def get_dataloaders(featureset="combined", fold=0, batch_size=16, no_longitudinal=False):
     dataset = datasets.load_dataset("./data/nacc",
                                     f"{featureset}_longitudinal_{str(fold)}",
                                     trust_remote_code=True)
@@ -107,8 +112,12 @@ def get_dataloaders(featureset="combined", fold=0, batch_size=16):
     dataset_train = dataset["train"]
     dataset_train.set_format("torch", ["normalized", "target"])
 
-    train_dl = DataLoader(dataset_train, batch_size=batch_size, collate_fn=collate_fn, shuffle=True)
-    val_dl = DataLoader(dataset_val, batch_size=batch_size, collate_fn=collate_fn, shuffle=True)
+    train_dl = DataLoader(dataset_train, batch_size=batch_size,
+                          collate_fn=lambda x: collate_fn(x, no_longitudinal),
+                          shuffle=True)
+    val_dl = DataLoader(dataset_val, batch_size=batch_size,
+                        collate_fn=lambda x: collate_fn(x, no_longitudinal),
+                        shuffle=True)
 
     return (train_dl, val_dl), len(dataset_val[0]["normalized"][0])
 
