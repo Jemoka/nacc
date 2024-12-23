@@ -22,14 +22,8 @@ logger.add(
 from trainer import Trainer
 from commands import configure
 from datasets import load_dataset
-from parameters import parser
-
-# in_model = "./output/e1_neuralpsych_512_5e-5/best"
-default = configure("test", no_transformer=True)
-trainer = Trainer(default)
-trainer.train()
-
-# trainer.model
+from experiments.scripts import validate
 
 
+dataset = load_dataset("./data/nacc", "neuralpsych_longitudinal_0")["train"]
 
