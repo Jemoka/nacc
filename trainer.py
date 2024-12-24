@@ -57,16 +57,28 @@ class Trainer:
         self.best_dir = str(save_dir / "best")
 
         # set up data
-        (self.train_dl, self.val_dl), num_features = get_dataloaders(
-            args.featureset, args.fold, args.batch_size, args.no_longitudinal
-        )
+        try:
+            (self.train_dl, self.val_dl), num_features = get_dataloaders(
+                args.featureset, args.fold, args.batch_size, args.no_longitudinal
+            )
+        except AttributeError:
+            (self.train_dl, self.val_dl), num_features = get_dataloaders(
+                args.featureset, args.fold, args.batch_size, False
+            )
 
         # set up models
-        self.model = NACCFuseModel(num_classes=3,
-                                   num_features=num_features,
-                                   nlayers=args.n_layers,
-                                   hidden=args.hidden_dim,
-                                   no_transformer=args.no_transformer)
+        try:
+            self.model = NACCFuseModel(num_classes=3,
+                                       num_features=num_features,
+                                       nlayers=args.n_layers,
+                                       hidden=args.hidden_dim,
+                                       no_transformer=args.no_transformer)
+        except AttributeError:
+            self.model = NACCFuseModel(num_classes=3,
+                                       num_features=num_features,
+                                       nlayers=args.n_layers,
+                                       hidden=args.hidden_dim,
+                                       no_transformer=False)
         
         # leave blank
         # this will exist if we are resuming from checkpoint
