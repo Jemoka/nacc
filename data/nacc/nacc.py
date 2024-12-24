@@ -145,7 +145,7 @@ class NACC(datasets.GeneratorBasedBuilder):
             features = [[j for j in i.split("\n") if j.strip() != "" and j.strip()[0] != "#"]
                         for i in features]
             grouped_features = [i for i in features if len(i) != 0]
-        features_ = list(set([j for i in grouped_features 
+            features_ = list(set([j for i in grouped_features 
                 for j in i if j.strip() != ""]))
         features = features_ + ["NACCID", "NACCAGE", "current_target"]
         features = list(set(features))
@@ -227,6 +227,7 @@ class NACC(datasets.GeneratorBasedBuilder):
                     "predictors": x[features_].to_numpy(),
                     "normalized": normalized.to_numpy(),
                     "variations": np.stack(compute_variances(normalized)).transpose(),
+                    "features": features_,
                     "time": m,
                     "target": y,
                 }
