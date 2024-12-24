@@ -24,6 +24,8 @@ from commands import configure
 from datasets import load_dataset
 from experiments.scripts import validate
 
+dataset = load_dataset("./data/nacc", "combined_longitudinal_0")["validation"]
+trainer = Trainer.from_pretrained("./output/e1_neuralpsych_512_5e-5/best")
 
-dataset = load_dataset("./data/nacc", "neuralpsych_longitudinal_0")["train"]
+
 
